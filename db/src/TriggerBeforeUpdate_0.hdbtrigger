@@ -1,0 +1,46 @@
+TRIGGER "TriggerBeforeUpdate_0"  BEFORE
+    UPDATE OF 
+      TOTALBUDGET,
+      AVAILABLEBUDGET
+     ON "APP_INTERACTIONS_BUDGET" REFERENCING OLD ROW OLD_BUDGET_REF,
+      NEW ROW BUDGET_REF FOR EACH ROW 
+  BEGIN 
+  
+    --Change the available amount first in case total amount has changed
+  
+      IF :OLD_BUDGET_REF.totalBudget != :BUDGET_REF.totalBudget
+      OR :OLD_BUDGET_REF.availableBudget IS NULL THEN
+       BUDGET_REF.availableBudget = :BUDGET_REF.totalBudget;
+  END IF;
+  
+  -- Order Amount
+  
+  IF :BUDGET_REF.orderAmount IS NOT NULL THEN 
+      BUDGET_REF.availableBudget = :BUDGET_REF.availableBudget - :BUDGET_REF.orderAmount;
+  END IF;
+  
+  
+  -- Paid Out
+  
+  IF :BUDGET_REF.paidOut IS NOT NULL THEN 
+      IF :OLD_BUDGET_REF.paidOut IS NOT NULL THEN 
+          BUDGET_REF.availableBudget = :BUDGET_REF.availableBudget - :BUDGET_REF.paidOut;
+          -- BUDGET_REF.paidOut = :OLD_BUDGET_REF.paidOut + :BUDGET_REF.paidOut;
+  ELSE BUDGET_REF.availableBudget = :BUDGET_REF.availableBudget - :BUDGET_REF.paidOut;
+  BUDGET_REF.paidOut = :BUDGET_REF.paidOut;
+  END IF;
+  END IF;
+  
+  -- Store Transfer
+  
+  IF :BUDGET_REF.storeTransfer IS NOT NULL THEN 
+      IF :OLD_BUDGET_REF.storeTransfer IS NOT NULL THEN 
+          BUDGET_REF.availableBudget = :BUDGET_REF.availableBudget - :BUDGET_REF.storeTransfer;
+  -- BUDGET_REF.storeTransfer = :OLD_BUDGET_REF.storeTransfer + :BUDGET_REF.storeTransfer;
+  ELSE 
+      BUDGET_REF.availableBudget = :BUDGET_REF.availableBudget - :BUDGET_REF.storeTransfer;
+  BUDGET_REF.storeTransfer = :BUDGET_REF.storeTransfer;
+  END IF;
+  END IF;
+  
+  END 
